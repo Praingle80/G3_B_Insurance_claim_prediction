@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Insurance Fraud | Claim Risk Analysis</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+<div class="shell">
+  <!-- <header class="topbar"><span class="logo">◆ <strong>ClaimGuard</strong> <small>ANALYTICS</small></span><span class="top-chip">Random Forest · ML Powered</span></header> -->
+  <!-- <section class="hero"><div><div class="eyebrow">INSURANCE INTELLIGENCE / CLAIM ASSESSMENT</div><h1>Fraud Detection <span>Dashboard</span></h1></div></section> -->
+   <section class="hero"
+    style="display: flex; justify-content: center; align-items: center; text-align: center; width: 100%; padding: 10px 0;">
+    <div style="text-align: center;">
+        <div class="eyebrow" style="text-align: center;">
+            INSURANCE INTELLIGENCE / CLAIM ASSESSMENT
+        </div><h1 style="text-align: center; margin: 6px 0;"> Fraud Detection <span>Dashboard</span></h1></div>
+</section>
+  <div class="layout">
+    <main class="panel">
+      <!-- <div class="panel-head"><div><span class="eyebrow">01 / CLAIM INPUT</span><h2>Claim information</h2></div><span class="count">13 features</span></div> -->
+      <form id="claimForm">
+        <h3>Incident details</h3>
+        <div class="fields">
+          {% for field in ['incident_severity', 'collision_type', 'incident_type', 'authorities_contacted'] %}
+          <label><span>{{ field.replace('_',' ').title() }}</span><select required name="{{ field }}"><option value="" selected disabled>Select option</option>{% for option in categories[field] %}<option value="{{ option }}">{{ option }}</option>{% endfor %}</select></label>
+          {% endfor %}
+        </div>
+        <h3>Policy details</h3>
+        <div class="fields">
+          <label><span>Policy Age (Years)</span><input type="number" name="policy_age_years" min="0" step="0.01" placeholder="e.g. 5" required /></label>
+          <label><span>Policy State</span><select required name="policy_state"><option value="" selected disabled>Select state</option>{% for option in categories['policy_state'] %}<option value="{{ option }}">{{ option.title() }}</option>{% endfor %}</select></label>
+          <label><span>Umbrella Limit ($)</span><input type="number" name="umbrella_limit" min="0" step="any" placeholder="e.g. 0" required /></label>
+          <label><span>Policy CSL</span><select required name="policy_csl"><option value="" selected disabled>Select coverage</option>{% for option in categories['policy_csl'] %}<option value="{{ option }}">{{ option }}</option>{% endfor %}</select></label>
+        </div>
+        <h3>Claim amounts</h3>
+        <div class="fields">
+          {% for field in ['property_claim','injury_claim','total_claim_amount','bodily_injuries','vehicle_claim'] %}
+          <label><span>{{ field.replace('_',' ').title() }}{% if field != 'bodily_injuries' %} ($){% endif %}</span><input type="number" name="{{ field }}" min="0" {% if field == 'bodily_injuries' %}step="1"{% else %}step="any"{% endif %} placeholder="Enter value" required /></label>
+          {% endfor %}
+          <!-- <label><span>Actual Fraud Reported <em>(optional)</em></span><select name="actual_fraud_reported"><option value="">Not available</option><option value="Yes">Yes</option><option value="No">No</option></select></label> -->
+        </div>
+        <!-- <p class="note">The actual fraud label is for comparison only and is never sent to the model as an input. Some displayed fields are not selected features in the saved model.</p> -->
+        <div class="actions"><button class="submit" type="submit" id="predictBtn">✦ Predict Fraud Risk →</button><button type="reset" class="reset">Reset form</button></div>
+      </form>
+    </main>
+    <aside class="panel results"><div class="eyebrow">02 / MODEL OUTPUT</div><h2>Risk assessment</h2><p class="result-hint">Live model output</p>
+      <div id="emptyState" class="empty"><div class="empty-icon">◎</div><strong>Awaiting claim details</strong><span>Fill the form and click Predict Fraud Risk to view the analysis.</span></div>
+      <div id="errorBox" class="error hidden" role="alert"></div>
+      <div id="resultState" class="hidden" aria-live="polite">
+        <div id="riskCard" class="risk-card"><small>PREDICTED CLASSIFICATION</small><h2 id="predictionText"></h2><span id="riskSubtitle"></span></div>
+        <div class="prob"><div class="prob-title"><span>Fraud probability</span><b id="fraudValue"></b></div><div class="track"><div class="fill fraud-fill" id="fraudBar"></div></div></div>
+        <div class="prob"><div class="prob-title"><span>No-fraud probability</span><b id="noFraudValue"></b></div><div class="track"><div class="fill safe-fill" id="noFraudBar"></div></div></div>
+        <div id="actualResult" class="comparison hidden"></div>
+        <div class="disclaimer"><strong>Interpretation</strong><p>This is a statistical prediction, not proof of fraud. Review the claim independently before making decisions.</p></div>
+      </div>
+    </aside>
+  </div>
+  <!-- <footer>ClaimGuard Analytics · Flask API + Scikit-learn Random Forest</footer> -->
+</div>
+<script>
+const form = document.getElementById('claimForm');
+const $ = id => document.getElementById(id);
+form.addEventListener('reset', () => { $('emptyState').classList.remove('hidden'); $('resultState').classList.add('hidden'); $('errorBox').classList.add('hidden'); });
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const payload = Object.fromEntries(new FormData(form).entries());
+  $('predictBtn').disabled = true; $('predictBtn').textContent = 'Analyzing claim…'; $('errorBox').classList.add('hidden');
+  try {
+    const response = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Prediction failed');
+    const flagged = result.predicted_fraud_reported === 'Yes';
+    $('emptyState').classList.add('hidden'); $('resultState').classList.remove('hidden');
+    $('riskCard').className = 'risk-card ' + (flagged ? 'flagged' : 'clear');
+    $('predictionText').textContent = flagged ? '⚠ Fraud predicted' : '✓ No fraud predicted';
+    $('riskSubtitle').textContent = flagged ? 'The model classified this claim as fraud.' : 'The model classified this claim as non-fraud.';
+    $('fraudValue').textContent = result.fraud_probability.toFixed(2) + '%';
+    $('noFraudValue').textContent = result.not_fraud_probability.toFixed(2) + '%';
+    $('fraudBar').style.width = result.fraud_probability + '%';
+    $('noFraudBar').style.width = result.not_fraud_probability + '%';
+    if (result.actual_fraud_reported) {
+      $('actualResult').classList.remove('hidden');
+      $('actualResult').textContent = 'Actual fraud: ' + result.actual_fraud_reported + ' · Prediction ' + (result.prediction_correct ? 'matches' : 'does not match') + ' actual';
+    } else $('actualResult').classList.add('hidden');
+  } catch (error) {
+    $('errorBox').textContent = error.message; $('errorBox').classList.remove('hidden');
+  } finally { $('predictBtn').disabled = false; $('predictBtn').textContent = '✦ Predict Fraud Risk →'; }
+});
+</script>
+</body></html>
