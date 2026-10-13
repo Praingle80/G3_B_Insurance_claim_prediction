@@ -45,7 +45,7 @@
         <div class="actions"><button class="submit" type="submit" id="predictBtn">✦ Predict Fraud Risk →</button><button type="reset" class="reset">Reset form</button></div>
       </form>
     </main>
-    <aside class="panel results"><div class="eyebrow">02 / MODEL OUTPUT</div><h2>Risk assessment</h2><p class="result-hint">Live model output</p>
+    <aside class="panel results"><div class="eyebrow"></div><h2>Risk assessment</h2><p class="result-hint"></p>
       <div id="emptyState" class="empty"><div class="empty-icon">◎</div><strong>Awaiting claim details</strong><span>Fill the form and click Predict Fraud Risk to view the analysis.</span></div>
       <div id="errorBox" class="error hidden" role="alert"></div>
       <div id="resultState" class="hidden" aria-live="polite">
@@ -53,7 +53,7 @@
         <div class="prob"><div class="prob-title"><span>Fraud probability</span><b id="fraudValue"></b></div><div class="track"><div class="fill fraud-fill" id="fraudBar"></div></div></div>
         <div class="prob"><div class="prob-title"><span>No-fraud probability</span><b id="noFraudValue"></b></div><div class="track"><div class="fill safe-fill" id="noFraudBar"></div></div></div>
         <div id="actualResult" class="comparison hidden"></div>
-        <div class="disclaimer"><strong>Interpretation</strong><p>This is a statistical prediction, not proof of fraud. Review the claim independently before making decisions.</p></div>
+        <!-- <div class="disclaimer"><strong>Interpretation</strong><p>This is a statistical prediction, not proof of fraud. Review the claim independently before making decisions.</p></div> -->
       </div>
     </aside>
   </div>
